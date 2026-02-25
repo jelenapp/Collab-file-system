@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { UserView } from "../models/user";
+import { useState } from "react";
 
 export default function EditorPage() {
   const { data: session } = useSession();
@@ -17,16 +18,16 @@ export default function EditorPage() {
     router.push("/");
     console.log("Logout clicked");
   };
-
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   return (
     <div className="flex h-screen">
       <div className="w-[25%] bg-transparent">
-        <FileExplorer />
+        <FileExplorer onSelectFile={setSelectedFileId} />
       </div>
 
       {/* Srednji deo sa editorom (80%) */}
       <div className="w-[67%] flex flex-col">
-        <SimpleEditor />
+        <SimpleEditor key={selectedFileId ?? "none"} fileId={selectedFileId} />
       </div>
 
       {/* Desni deo sa logout dugmetom (5%) */}

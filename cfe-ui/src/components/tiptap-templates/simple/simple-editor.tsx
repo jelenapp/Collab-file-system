@@ -75,17 +75,10 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
 // --- Styles ---
 import "@/components/tiptap-templates/simple/simple-editor.scss"
 
-import content from "@/components/tiptap-templates/simple/data/content.json"
-
-// ---  Y.JS BY FILIP PETROVIC ---
+// --- Yjs (load + autosave only) ---
 import * as Y from "yjs"
-import { WebrtcProvider } from "y-webrtc"
 import Collaboration from "@tiptap/extension-collaboration"
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
-
-const ydoc = new Y.Doc()
-const provider = new WebrtcProvider("my-local-room", ydoc)
-
+import { getBinary, postBinary } from "../../../app/api/serverRequests/methods"
 
 const MainToolbarContent = ({
   onHighlighterClick,
@@ -192,7 +185,7 @@ const MobileToolbarContent = ({
   </>
 )
 
-export function SimpleEditor() {
+export function SimpleEditor({ fileId }: { fileId: string | null }) {
   const isMobile = useMobile()
   const windowSize = useWindowSize()
   const [mobileView, setMobileView] = React.useState<
@@ -200,8 +193,64 @@ export function SimpleEditor() {
   >("main")
   const toolbarRef = React.useRef<HTMLDivElement>(null)
 
+  // 1) Y.Doc per file (resetuje se kad se promeni fileId)
+  const ydoc = React.useMemo(() => new Y.Doc(), [fileId])
+
+  // 2) dirty flag (autosave samo kad ima promena)
+  const dirtyRef = React.useRef(false)
+
+  // 3) LOAD + AUTOSAVE (20s) za trenutno selektovani fajl
+  React.useEffect(() => {
+    if (!fileId) return
+
+    const onUpdate = () => {
+      dirtyRef.current = true
+    }
+    ydoc.on("update", onUpdate)
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const res = await getBinary(`files/${fileId}/state`)
+        if (!res.ok) return
+
+        const buf = await res.arrayBuffer()
+        if (cancelled) return
+
+        if (buf.byteLength > 0) {
+          Y.applyUpdate(ydoc, new Uint8Array(buf))
+          dirtyRef.current = false //  sync sa bazom
+        }
+      } catch (e) {
+        console.error("Load state failed:", e)
+      }
+    })()
+
+    const interval = setInterval(async () => {
+      try {
+        if (!dirtyRef.current) return
+        const update = Y.encodeStateAsUpdate(ydoc)
+        const saveRes = await postBinary(`files/${fileId}/state`, update)
+        if (saveRes.ok) dirtyRef.current = false
+      } catch (e) {
+        console.error("Save state failed:", e)
+      }
+    }, 2_000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      ydoc.off("update", onUpdate)
+      ydoc.destroy()
+      dirtyRef.current = false
+    }
+  }, [fileId, ydoc])
+
+  // 4) Tiptap editor – bez statičnog content.json (content dolazi iz Yjs stanja)
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !!fileId,
     editorProps: {
       attributes: {
         autocomplete: "off",
@@ -232,20 +281,12 @@ export function SimpleEditor() {
       }),
       TrailingNode,
       Link.configure({ openOnClick: false }),
-      // Y.JS EKSTENZIJE 
+
+      // Yjs doc kao izvor istine (load + autosave u useEffect gore)
       Collaboration.configure({
         document: ydoc,
       }),
-      CollaborationCursor.configure({
-        provider: provider,
-        user: {
-          name: "OPREM DOBRO" + Math.floor(Math.random() * 1000),
-          color: "#f783ac",
-        },
-      }),      
-      // ...
     ],
-    content: content,
   })
 
   const bodyRect = useCursorVisibility({
@@ -258,6 +299,14 @@ export function SimpleEditor() {
       setMobileView("main")
     }
   }, [isMobile, mobileView])
+
+  if (!fileId) {
+    return (
+      <div className="p-4 text-sm text-gray-400">
+        Izaberi fajl sa leve strane…
+      </div>
+    )
+  }
 
   return (
     <EditorContext.Provider value={{ editor }}>

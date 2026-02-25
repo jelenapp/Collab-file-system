@@ -33,7 +33,7 @@ interface FileItemProps {
 }
 
 
-function FileItem({ node, onRefresh }: FileItemProps) {
+function FileItem({ node, onRefresh, onSelectFile }: FileItemProps & { onSelectFile?: (id: string)=>void }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<FileNode[] | null>(null);
 
@@ -53,6 +53,16 @@ function FileItem({ node, onRefresh }: FileItemProps) {
       setItems([...folders, ...files]);
     }
   };
+
+  const handleClick = async () => {
+  if (node.type === "file") {
+    onSelectFile?.(node.id);
+    return;
+  }
+  // folder toggle
+  if (!open && isDirectory && !items) await fetchChildren();
+  setOpen(!open);
+};
 
   const handleToggle = async () => {
     if (!open && isDirectory && !items) await fetchChildren();
@@ -92,8 +102,8 @@ function FileItem({ node, onRefresh }: FileItemProps) {
     if (!confirmDelete) return;
     const endpoint =
       node.type === "folder"
-        ? `directory/${node.id}/delete`
-        : `file/${node.id}/delete`;
+        ? `directories/${node.id}/delete`
+        : `files/${node.id}/delete`;
 
     const res = await deleteRequest(endpoint);
     if (res.ok && onRefresh) {
@@ -104,7 +114,7 @@ function FileItem({ node, onRefresh }: FileItemProps) {
   return (
     <div className="pl-2">
       <div className="flex items-center gap-2 py-1 hover:bg-blue-400 rounded cursor-pointer justify-between">
-        <div className="flex items-center gap-2" onClick={handleToggle}>
+        <div className="flex items-center gap-2" onClick={handleClick}>
           {isDirectory ? (open ? <FolderOpen size={16} /> : <Folder size={16} />) : <FileText size={16} />}
           {node.name}
         </div>
@@ -119,7 +129,7 @@ function FileItem({ node, onRefresh }: FileItemProps) {
       {open && items && (
         <div className="pl-4">
           {items.map((child) => (
-            <FileItem key={child.id} node={child} onRefresh={fetchChildren} />
+            <FileItem key={child.id} node={child} onRefresh={fetchChildren} onSelectFile={onSelectFile} />
           ))}
         </div>
       )}
@@ -127,7 +137,7 @@ function FileItem({ node, onRefresh }: FileItemProps) {
   );
 }
 
-export default function FileExplorer() {
+export default function FileExplorer({ onSelectFile }: { onSelectFile?: (id: string) => void }) {
   const [root, setRoot] = useState<FileNode | null>(null);
   const { data: session, status } = useSession();
 
@@ -169,7 +179,7 @@ export default function FileExplorer() {
 
   return (
     <div className="w-full h-full text-sm font-mono overflow-y-auto p-2">
-      <FileItem node={root} />
+      <FileItem node={root} onSelectFile={onSelectFile} />
     </div>
   );
 }

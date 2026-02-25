@@ -68,3 +68,24 @@ export async function deleteRequest(method_route: string, param?: string, param_
     const res = await fetch(url, options);
     return res;
 }
+
+export async function getBinary(method_route: string) {
+  method_route = method_route.trim().replace(/^\/+/, "");
+  const url = `${server_address}/${method_route}`;
+  return fetch(url, { method: "GET" });
+}
+
+export async function postBinary(method_route: string, bytes: Uint8Array) {
+  method_route = method_route.trim().replace(/^\/+/, "");
+  const url = `${server_address}/${method_route}`;
+
+  // napravi novi "čist" ArrayBuffer (ne ArrayBufferLike)
+  const copy = new Uint8Array(bytes); // kopija tačne dužine
+  const body: ArrayBuffer = copy.buffer;
+
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body, // sada je pravi ArrayBuffer
+  });
+}

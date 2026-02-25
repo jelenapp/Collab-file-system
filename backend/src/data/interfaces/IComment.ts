@@ -24,7 +24,7 @@ export interface ICommentPopulated extends Document {
 }
 
 export interface INewComment {
-    commenterId: string;
-    fileId: string;
+    commenter: string;
+    file: string;
     content: string;
 }

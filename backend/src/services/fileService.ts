@@ -43,7 +43,13 @@ export async function getFileById(fileId: string): Promise<IFile | null> {
 
 export async function getCommentsForFile(fileId: string): Promise<Array<IComment> | null> {
 
-    const file = await File.findById(fileId).populate("comments").exec() as IFilePopulated | null;
+    const file = await File.findById(fileId)
+    .populate({
+        path: "comments",
+        populate: { path: "commenter", select: "username" },
+    })
+    .exec() as IFilePopulated | null;
+
     if (file != null)
         return file.comments;
     else

@@ -1,6 +1,7 @@
 'use client';
 import { SimpleEditor } from "../src/components/tiptap-templates/simple/simple-editor";
 import FileExplorer from "./file-explorer/FileExplorer";
+import CommentsPanel from "./CommentsPanel";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,8 @@ export default function EditorPage() {
     console.log("Logout clicked");
   };
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(false);
+  
   return (
     <div className="flex h-screen">
       <div className="w-[25%] bg-transparent">
@@ -28,6 +31,7 @@ export default function EditorPage() {
       {/* Srednji deo sa editorom (80%) */}
       <div className="w-[67%] flex flex-col">
         <SimpleEditor key={selectedFileId ?? "none"} fileId={selectedFileId} />
+
       </div>
 
       {/* Desni deo sa logout dugmetom (5%) */}
@@ -49,6 +53,18 @@ export default function EditorPage() {
           </button>
         </div>
       </div>
+
+              <button
+          onClick={() => setShowComments((p) => !p)}
+          disabled={!selectedFileId}
+          className="px-3 py-2 rounded bg-slate-700 text-white disabled:opacity-50"
+        >
+          Komentari
+        </button>
+
+        {showComments && selectedFileId && (
+          <CommentsPanel fileId={selectedFileId} />
+        )}
     </div>
   );
 }

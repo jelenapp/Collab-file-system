@@ -17,7 +17,7 @@ export interface IReaction extends Document {
 // }
 
 export interface INewReaction {
-    commentId: string;
+    comment: string;
     reactionType: string;
-    reactorId: string;
+    reactor: string;
 }

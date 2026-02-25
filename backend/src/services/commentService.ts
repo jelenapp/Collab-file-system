@@ -12,11 +12,11 @@ export async function getCommentById(commentId: string): Promise<IComment | null
 
 export async function createComment(comment: INewComment) {
 
-    const commenter: IUser | null = await User.findById(comment.commenterId).exec();
+    const commenter: IUser | null = await User.findById(comment.commenter).exec();
     if(commenter == null)
         return Error("User not found!");
 
-    const file: IFile | null = await File.findById(comment.fileId).exec();
+    const file: IFile | null = await File.findById(comment.file).exec();
     if(file == null)
         return Error("File not found!");
 

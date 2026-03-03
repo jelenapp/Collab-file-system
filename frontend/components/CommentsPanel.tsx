@@ -232,7 +232,7 @@ function CommentItem({
 
 
     for (const reaction of comment.reactions || []) {
-        
+
         if (reaction.reactor.id == myUserId) {
             myReaction = reaction.reactionType;
             break;

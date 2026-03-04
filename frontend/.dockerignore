@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Next build output
+.next
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files
+.env
+.env.*
+!.env.production
+
+# Git
+.git
+.gitignore
+
+# OS / IDE
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage
+__tests__

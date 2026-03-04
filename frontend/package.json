@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "docker-build": "docker build -t cfs-frontend .",
+    "docker-run": "docker run --rm --name cfs-frontend --env-file .env.prod -p 3000:3000 cfs-frontend"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.13",

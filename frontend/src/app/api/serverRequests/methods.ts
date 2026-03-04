@@ -1,4 +1,4 @@
-const server_address = "http://localhost:5000"; // process.env.SERVER_ADDRESS
+const server_address = process.env.SERVER_ADDRESS || "http://localhost:5000"
 
 export async function getRequestSingle(
   method_route: string,

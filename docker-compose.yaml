@@ -1,0 +1,41 @@
+services:
+  cfs-backend:
+    build:
+      context: ./backend
+    container_name: cfs-backend
+    restart: unless-stopped
+#    env_file:
+#      - ./backend/.env.prod
+    environment:
+      MONGO_URI: "mongodb+srv://milutineee:milutineee@cluster0.efketz3.mongodb.net/development?retryWrites=true&w=majority&appName=Cluster0"
+#      PORT: 5000
+      ENV: "dev"
+      EMAIL_USER: "filipficanetherlands@gmail.com"
+      EMAIL_APP_PASS: 'cqxe ttwj nada sjto'
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "asasadsdasdasdsadasdda"
+    ports:
+      - "5000:5000"
+    networks:
+      - cfs-net
+
+
+  cfs-frontend:
+    build:
+      context: ./frontend
+    container_name: cfs-frontend
+    restart: unless-stopped
+    depends_on:
+      - cfs-backend
+    environment:
+      SERVER_ADDRESS: "http://cfs-backend:5000"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "asasadsdasdasdsadasdda"
+    ports:
+      - "3000:3000"
+    networks:
+      - cfs-net
+
+networks:
+  cfs-net:
+    driver: bridge

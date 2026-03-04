@@ -5,6 +5,10 @@ import {IDirectory} from "../data/interfaces/IDirectory";
 import {IComment} from "../data/interfaces/IComment";
 import {CommentView} from "../data/types/CommentView";
 import {getAllReactionsForComment} from "./commentService";
+import {toUserView} from "../data/types/UserView";
+import {toReactionVew} from "../data/types/ReactionView";
+import {IReaction} from "../data/interfaces/IReaction";
+import {IUser} from "../data/interfaces/IUser";
 
 
 export async function createFile (file: INewFile): Promise<IFile | null> {
@@ -48,7 +52,7 @@ export async function getCommentsForFile(fileId: string): Promise<Array<CommentV
     const file = await File.findById(fileId)
     .populate({
         path: "comments",
-        populate: { path: "commenter", select: "username" },
+        populate: { path: "commenter reactions" },
     })
     .exec() as IFilePopulated | null;
 
@@ -57,13 +61,12 @@ export async function getCommentsForFile(fileId: string): Promise<Array<CommentV
         const views: CommentView[] = [];
 
         for (const comment of file.comments) {
-            const reactions = await getAllReactionsForComment(comment.id);
                 views.push( {
                     id: comment.id,
                     edited: comment.edited,
                     content: comment.content,
-                    commenter: comment.commenter as unknown as string,
-                    reactions: reactions
+                    commenter: toUserView(comment.commenter as unknown as IUser),
+                    reactions: comment.reactions.map(r => toReactionVew(r as unknown as IReaction))
                 }  as CommentView
             );
         }

@@ -35,12 +35,12 @@ export async function deleteDirectory (directoryId: string) {
     if (dir == null)
         return numberOfDeletions;
 
-    if(dir.parents.length != 0 && dir.populated('parents')){
+    if(dir.parents.length > 0){
 
         for(const p of dir.parents){
             const parentDir = p as unknown as IDirectory;
 
-            parentDir.children = parentDir.children.filter(child => child != dir._id);
+            parentDir.children = parentDir.children.filter(child => child.toHexString() != dir.id);
             await parentDir.save();
         }
     }
@@ -80,7 +80,7 @@ export async function getDirectoriesByOwnerId (ownerId: string): Promise<Array<I
 
     const owner: IUser | null = await User.findById(ownerId);
     if (owner)
-        return await Directory.find({ owner: ownerId });
+        return await Directory.find({ owner: ownerId }).exec();
     else
         return null;
 }
@@ -91,7 +91,7 @@ export async function getDirectoryWithChildrenAndFiles(dirId: string): Promise<I
 }
 
 export async function getUserRootDirectories(ownerId: string): Promise<Array<IDirectory> | null> {
-    return await Directory.find({ owner: ownerId, parents: [] });
+    return await Directory.find({owner: ownerId, parents: []}).exec();
 }
 
 export async function getDirectoriesStructured (ownerId: string): Promise<Array<IDirectory> | null> {
@@ -246,8 +246,6 @@ export async function addFilesByIds (directoryId: string, filesIds: Array<string
     return dir;
 }
 
-
-//!!!NEPOTREBNO!!! ali ga neka
 export async function removeFromFilesByIds (directoryId: string, filesIdsToRemove: Array<string>): Promise<IDirectory | null> {
 
     const dir: IDirectory | null = await Directory.findById(directoryId);

@@ -5,30 +5,28 @@ import {IFile} from "../data/interfaces/IFile";
 import {IComment, INewComment} from "../data/interfaces/IComment";
 import {IUser} from "../data/interfaces/IUser";
 import {IReaction} from "../data/interfaces/IReaction";
-import {CommentView, toCommentView} from "../data/types/CommentView";
+import {toCommentView} from "../data/types/CommentView";
 import {ReactionView} from "../data/types/ReactionView";
 import {toUserView} from "../data/types/UserView";
 
+export async function getCommentById(commentId: string) {
 
-export async function getCommentById(commentId: string): Promise<CommentView | null> {
-    const comment: IComment | null = await Comment.findById(commentId).exec();
-    if (comment != null){
-
-        const view = await toCommentView(comment);
-        view.reactions = await getAllReactionsForComment(commentId);
-
-        return view;
-    }
-    return null;
+    const comment = await Comment.findById(commentId)
+        .populate("commenter")
+        .exec();
+    if (comment == null)
+        return null;
+    else
+        return toCommentView(comment);
 }
 
-export async function createComment(comment: INewComment): Promise<CommentView | Error> {
+export async function createComment(comment: INewComment) {
 
-    const commenter: IUser | null = await User.findById(comment.commenter).exec();
+    const commenter: IUser | null = await User.findById(comment.commenterId).exec();
     if(commenter == null)
         return Error("User not found!");
 
-    const file: IFile | null = await File.findById(comment.file).exec();
+    const file: IFile | null = await File.findById(comment.fileId).exec();
     if(file == null)
         return Error("File not found!");
 
@@ -37,34 +35,46 @@ export async function createComment(comment: INewComment): Promise<CommentView |
     file.comments.push(newComment._id);
     await file.save();
 
-   return  await toCommentView(newComment);
+    await newComment.populate("commenter");
+
+    return toCommentView(newComment);
 }
 
-export async function updateComment(commentId: string, content: string): Promise<CommentView | null> {
-    const comment = await Comment.findByIdAndUpdate(commentId, {content: content, edited: true}, { new: true }).exec();
+export async function updateComment(commentId: string, content: string) {
+
+    const comment =  await Comment.findByIdAndUpdate(commentId,
+        {
+            content: content,
+            edited: true
+        },
+        { new: true }
+    ).populate("commenter").exec();
 
     if (comment == null)
         return null;
-
-    const view = await toCommentView(comment);
-    view.reactions =  await getAllReactionsForComment(commentId);
-
-    return view;
+    else
+        return toCommentView(comment);
 }
 
-export async function deleteComment(commentId: string): Promise<string | null> {
-    const comment = await Comment.findByIdAndDelete(commentId).exec();
+export async function deleteComment(commentId: string) {
 
-    return comment?.id;
+    const comment = await Comment.findByIdAndDelete(commentId)
+        .populate("commenter")
+        .exec();
+
+    if (comment == null)
+        return null;
+    else
+        return toCommentView(comment);
 }
 
-export async function getAllReactionsForComment(commentId: string): Promise<Array<ReactionView>> {
+export async function getAllReactionsForComment(commentId: string): Promise<Array<ReactionView> | null> {
 
     const comment = await Comment.findById(commentId)
-                                .populate('reactions')
-                                .select('reactions')
-                                .lean()
-                                .exec() as IComment | null;
+        .populate('reactions')
+        .select('reactions')
+        .lean()
+        .exec() as IComment | null;
 
     if (comment == null)
         return [];
@@ -80,11 +90,11 @@ export async function getAllReactionsForComment(commentId: string): Promise<Arra
         const reactor: IUser | null = await User.findById(reaction.reactor);
         if (reactor != null)
             views.push( {
-                id: reaction.id,
-                reactionType: reaction.reactionType,
-                reactor: toUserView(reactor)
-            } as ReactionView
-        );
+                    id: reaction.id,
+                    reactionType: reaction.reactionType,
+                    reactor: toUserView(reactor)
+                } as ReactionView
+            );
     }
     return views;
 }

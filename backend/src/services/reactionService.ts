@@ -2,48 +2,43 @@ import {INewReaction, IReaction} from "../data/interfaces/IReaction";
 import Reaction from "../data/dao/ReactionSchema";
 import Comment from "../data/dao/CommentSchema";
 import {IComment} from "../data/interfaces/IComment";
-import {ReactionView, toReactionVew} from "../data/types/ReactionView";
-import {toUserView, UserView} from "../data/types/UserView";
-import {IUser} from "../data/interfaces/IUser";
+import {toReactionVew} from "../data/types/ReactionView";
 
 
-export async function getReactionById(reactionId: string): Promise<ReactionView | null> {
-    const reaction: IReaction | null = await Reaction.findById(reactionId)
-                                                        .populate("reactor")
-                                                        .exec();
+export async function getReactionById(reactionId: string) {
 
-    return reaction != null ? {
-        ...reaction,
-        reactor: toUserView(reaction.reactor as unknown as IUser)
-    } as ReactionView : null
+    const reaction = await Reaction.findById(reactionId).exec();
+
+    if (reaction == null)
+        return null;
+    else
+        return toReactionVew(reaction);
 }
 
-export async function getReactionByCommentAndUser(userId: string, commentId: string): Promise<ReactionView | null> {
-    const reaction: IReaction | null = await Reaction.findOne({
-        reactor: userId,
-        comment: commentId
-    })
-    .populate("reactor")
-    .exec();
+export async function getReactionByCommentAndUser(userId: string, commentId: string) {
 
-    return reaction != null ? toReactionVew(reaction) : null
+    const reaction =  await Reaction.findOne({reactor: userId, comment: commentId}).exec();
+
+    if (reaction == null)
+        return null;
+    else
+        return toReactionVew(reaction);
 }
 
 export async function createOrUpdateReaction(reaction: INewReaction) {
 
-    const r: IReaction | null = await Reaction.findOne({
-        reactor: reaction.reactor,
-        comment: reaction.comment
-    })
-    .populate("reactor")
-    .exec();
+    const r =  await Reaction.findOne({
+        reactor: reaction.reactorId,
+        comment: reaction.commentId
+    }).exec();
 
-    return r != null ?
-        { updated: true, reaction: await updateReaction(r, reaction.reactionType)} :
-        { updated: false, reaction: await createNewReaction(reaction)};
+    if (r != null)
+        return { updated: true, reaction: await updateReaction(r, reaction.reactionType)};
+    else
+        return { updated: false, reaction: await createNewReaction(reaction)};
 }
 
-export async function createNewReaction(reaction: INewReaction): Promise<ReactionView> {
+export async function createNewReaction(reaction: INewReaction) {
 
     const newReaction: IReaction = await Reaction.create(reaction);
     await newReaction.populate('comment');
@@ -52,27 +47,27 @@ export async function createNewReaction(reaction: INewReaction): Promise<Reactio
         comment.reactions.push(newReaction._id);
         await comment.save();
     }
-
-    await newReaction.populate('reactor');
-
-    const view = toReactionVew(newReaction);
-
     newReaction.depopulate('comment');
-
-    return view;
+    return toReactionVew(newReaction);
 }
 
-export async function updateReaction(reaction: IReaction, newReactionType: string): Promise<ReactionView | null> {
+export async function updateReaction(reaction: IReaction, newReactionType: string) {
     reaction.reactionType = newReactionType;
-    const r =  await Reaction.findByIdAndUpdate(reaction._id, reaction, {new: true})
-        .populate("reactor")
-        .exec();
 
-    return r != null ? toReactionVew(r) : null
+    const r = await Reaction.findByIdAndUpdate(reaction._id, reaction, {new: true}).exec();
+
+    if (r == null)
+        return null;
+    else
+        return toReactionVew(r);
 }
 
-export async function deleteReaction(reactionId: string): Promise<ReactionView | null> {
-    const r = await Reaction.findByIdAndDelete(reactionId).exec();
+export async function deleteReaction(reactionId: string) {
 
-    return r != null ? toReactionVew(r) : null
+    const reaction = await Reaction.findByIdAndDelete(reactionId).exec();
+
+    if (reaction == null)
+        return null;
+    else
+        return toReactionVew(reaction);
 }

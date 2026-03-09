@@ -4,7 +4,8 @@ import {toUserView, UserView} from "./UserView";
 import {IUser} from "../interfaces/IUser";
 
 
-export type ReactionView = PlainResource<IReaction, "comment" | "reactor"> & { reactor: UserView }
+export type ReactionView = PlainResource<IReaction, "comment" | "reactor">
+    & { reactor: UserView };
 
 export function toReactionVew(reaction: IReaction): ReactionView{
 

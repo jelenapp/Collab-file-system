@@ -15,16 +15,17 @@ export async function createUser(req: Request, res: Response, next: NextFunction
 
         const result: UserView | Error = await us.createNewUser(data);
 
-        if (result instanceof Error)
-            res.status(400).json({
-                success: false,
-                message: result.message,
-            });
-        else
+        if (result)
             res.status(201).json({
                 success: true,
                 data: result,
             });
+        else {
+            res.status(400).json({
+                success: false,
+                message: result,
+            });
+        }
     }
     catch (err) {
         next(err);

@@ -6,10 +6,12 @@ import mongoose, {Types} from "mongoose"
 import {IFile} from "../data/interfaces/IFile";
 import {IUser} from "../data/interfaces/IUser";
 import {NumberOfDeletions} from "../data/classes/NumberOfDeletions";
+import {DirectoryView, toDirectoryView} from "../data/types/DirectoryView";
+import {FileView, toFileView} from "../data/types/FileView";
 
-export async function createDirectory (directory: INewDirectory): Promise<IDirectory | null> {
+export async function createDirectory (directory: INewDirectory) {
 
-    let newDirectory: IDirectory | null = await Directory.create(directory);
+    let newDirectory = await Directory.create(directory);
 
     if(directory.parents.length > 0) {
 
@@ -23,7 +25,9 @@ export async function createDirectory (directory: INewDirectory): Promise<IDirec
         }
     }
 
-    return newDirectory;
+    newDirectory.populate(["files", "children", "owner"]);
+
+    return toDirectoryView(newDirectory);
 }
 
 export async function deleteDirectory (directoryId: string) {
@@ -76,29 +80,49 @@ export async function deleteDirectory (directoryId: string) {
     return numberOfDeletions;
 }
 
-export async function getDirectoriesByOwnerId (ownerId: string): Promise<Array<IDirectory> | null> {
+export async function getDirectoriesByOwnerId (ownerId: string) {
 
-    const owner: IUser | null = await User.findById(ownerId);
-    if (owner)
-        return await Directory.find({ owner: ownerId }).exec();
-    else
+    const dirs = await Directory.find({ owner: ownerId })
+        .populate(["owner", "children", "files"])
+        .exec();
+
+    if (dirs == null)
+        return [];
+
+    const views: Array<DirectoryView> = dirs.map(d => toDirectoryView(d));
+    return views;
+}
+
+export async function getDirectoryWithChildrenAndFiles(dirId: string) {
+
+    const dir = await Directory.findById(dirId)
+        .populate(["files", "children", "owner"])
+        .exec();
+
+    if (dir == null)
         return null;
+    else
+        return toDirectoryView(dir);
 }
 
-export async function getDirectoryWithChildrenAndFiles(dirId: string): Promise<IDirectory | null> {
+export async function getUserRootDirectories(ownerId: string) {
 
-    return await Directory.findById(dirId).populate(['files', 'children']).exec();
+    const dirs = await Directory.find({ owner: ownerId, parents: [] })
+        .populate(["files", "children", "owner"])
+        .exec();
+
+    if (dirs == null)
+        return [];
+
+    const views: Array<DirectoryView> = dirs.map(d => toDirectoryView(d));
+    return views;
 }
 
-export async function getUserRootDirectories(ownerId: string): Promise<Array<IDirectory> | null> {
-    return await Directory.find({owner: ownerId, parents: []}).exec();
-}
+export async function getDirectoriesStructured (ownerId: string) {
 
-export async function getDirectoriesStructured (ownerId: string): Promise<Array<IDirectory> | null> {
+    const owner: IUser | null = await User.findById(ownerId).exec();
 
-    const owner: IUser | null = await User.findById(ownerId);
-
-    if (owner){
+    if (owner != null){
         const dirs: Array<IDirectory> = await Directory.find({
             owner: ownerId,
             parents: []
@@ -107,7 +131,7 @@ export async function getDirectoriesStructured (ownerId: string): Promise<Array<
         await populateChildrenIterative(dirs);
         // await populateChildrenRecursive(dirs);
 
-        return dirs;
+        return dirs.map(d => toDirectoryView(d));
     }
     else
         return null;
@@ -146,24 +170,24 @@ async function populateChildrenRecursive(directories: Array<IDirectory>) {
     }
 }
 
-export async function getFilesForDirectory(dirId: string): Promise<Array<IFile> | null> {
+export async function getFilesForDirectory(dirId: string) {
 
-    const dir: IDirectory | null = await Directory.findById(dirId).populate('files');
+    const dir: IDirectory | null = await Directory.findById(dirId)
+        .populate('files')
+        .exec();
 
-    let result: Array<IFile> | null = null;
+    let filesView: Array<FileView> | null = null;
     if (dir) {
-        result = [];
-        if (dir.populated('files'))
-            result = dir.files as unknown as Array<IFile>;
+        filesView = dir.files.map(f => toFileView(f as unknown as IFile));
     }
-    return result;
+    return filesView;
 }
 
-export async function addChildrenByIds (directoryId: string, childrenIds: Array<string>): Promise<IDirectory | null> {
+export async function addChildrenByIds (directoryId: string, childrenIds: Array<string>) {
 
-    const dir: IDirectory | null = await Directory.findById(directoryId);
+    const dir: IDirectory | null = await Directory.findById(directoryId).exec();
 
-    if (dir) {
+    if (dir != null) {
 
         const children = new Set(dir.children.map(x => x.toHexString()));
         const childrenToUpdate = childrenIds.filter(cId => !children.has(cId));
@@ -182,15 +206,17 @@ export async function addChildrenByIds (directoryId: string, childrenIds: Array<
             }
         }
 
+        return toDirectoryView(dir);
     }
-    return dir;
+
+    return null;
 }
 
-export async function removeFromChildrenByIds (directoryId: string, childrenIdsToRemove: Array<string>): Promise<IDirectory | null> {
+export async function removeFromChildrenByIds (directoryId: string, childrenIdsToRemove: Array<string>) {
 
     const dir: IDirectory | null = await Directory.findById(directoryId);
 
-    if (dir) {
+    if (dir != null) {
         const toRemove = new Set(childrenIdsToRemove);
         const childrenIds = dir.children
             .map(child => child.toHexString())
@@ -208,15 +234,17 @@ export async function removeFromChildrenByIds (directoryId: string, childrenIdsT
                 await child.save();
             }
         }
+
+        return toDirectoryView(dir);
     }
-    return dir;
+    return null;
 }
 
-export async function addFilesByIds (directoryId: string, filesIds: Array<string>): Promise<IDirectory | null> {
+export async function addFilesByIds (directoryId: string, filesIds: Array<string>) {
 
     const dir: IDirectory | null = await Directory.findById(directoryId);
 
-    if (dir) {
+    if (dir != null) {
 
         const files = new Set(dir.files.map(x => x.toHexString()));
         const filesToUpdate = filesIds.filter(fId => !files.has(fId));
@@ -242,15 +270,19 @@ export async function addFilesByIds (directoryId: string, filesIds: Array<string
                 await file.save();
             }
         }
+
+        return toDirectoryView(dir);
     }
-    return dir;
+    return null;
 }
 
-export async function removeFromFilesByIds (directoryId: string, filesIdsToRemove: Array<string>): Promise<IDirectory | null> {
+
+//!!!NEPOTREBNO!!! ali ga neka
+export async function removeFromFilesByIds (directoryId: string, filesIdsToRemove: Array<string>) {
 
     const dir: IDirectory | null = await Directory.findById(directoryId);
 
-    if (dir) {
+    if (dir != null) {
         const toRemove = new Set(filesIdsToRemove);
         const filesIds = dir.files
             .map(file => file.toHexString())
@@ -260,6 +292,8 @@ export async function removeFromFilesByIds (directoryId: string, filesIdsToRemov
             new Types.ObjectId(fileId)
         );
         await dir.save();
+
+        return toDirectoryView(dir);
     }
-    return dir;
+    return null;
 }

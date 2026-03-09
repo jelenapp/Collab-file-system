@@ -6,8 +6,8 @@ export interface IOrganization extends Document {
     name: string;
     organizer: Types.ObjectId;
     children: Array<Types.ObjectId>;
-    members: Map<string, string>;
     projections: Array<Types.ObjectId>;
+    members: Map<string, string>;
 }
 
 export type INewOrganization = {

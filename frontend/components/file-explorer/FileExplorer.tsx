@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { getRequestSingle } from "@/app/api/serverRequests/methods";
 import { UserView } from "../../models/user";
 import { FileTreeItem, FileNode } from "./FileTreeItem";
-import CollaborationExplorer from "./CollaborationExplorer";
+// import CollaborationExplorer from "./CollaborationExplorer";
 
 export default function FileExplorer({ onSelectFile }: { onSelectFile?: (id: string) => void }) {
   const [root, setRoot] = useState<FileNode | null>(null);
@@ -42,9 +42,9 @@ export default function FileExplorer({ onSelectFile }: { onSelectFile?: (id: str
       <div className="mb-2 px-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Workspace</div>
       <FileTreeItem node={root} onSelectFile={onSelectFile} />
 
-      <div className="mt-5 pt-4 border-t border-slate-800">
-        <CollaborationExplorer onSelectFile={onSelectFile} />
-      </div>
+      {/*<div className="mt-5 pt-4 border-t border-slate-800">*/}
+      {/*  <CollaborationExplorer onSelectFile={onSelectFile} />*/}
+      {/*</div>*/}
     </div>
   );
 }
